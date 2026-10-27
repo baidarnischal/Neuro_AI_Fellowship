@@ -1,3 +1,4 @@
 My AI Fellowship Notes and Assignment.
 
-- Neuro AI fellowship
+- Neuro AI fellowship...
+- Currently covering Python 
