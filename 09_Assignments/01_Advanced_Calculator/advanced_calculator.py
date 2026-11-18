@@ -19,6 +19,15 @@ to_deg = lambda r: r * 180 / math.pi
 percent = lambda part, whole: (part / whole) * 100
 celsius_to_f = lambda c: c * 9 / 5 + 32
 
+# Rewriting two lambda function as normal def
+def to_rad(d):
+    """Convert an angle from degrees to radians."""
+    return d * math.pi / 180
+
+def celsius_to_f(c):
+    """Convert a temperature from Celsius to Fahrenheit."""
+    return c * 9 / 5 + 32
+
 
 # ---------------------------------------------------------------
 # 2. DEF FUNCTIONS
