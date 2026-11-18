@@ -114,7 +114,74 @@ def trig(func, angle_deg):
         return to_deg(math.acos(angle_deg)) if -1 <= angle_deg <= 1 else "Error: domain"
     elif func == "atan":
         return to_deg(math.atan(angle_deg))
+    elif func == "sec":
+        return sec(angle_deg)
+    elif func == "cosec":
+        return cosec(angle_deg)
+    elif func == "cot":
+        return cot(angle_deg)
+    elif func == "sinh":
+        return sinh(angle_deg)
+    elif func == "cosh":
+        return cosh(angle_deg)
+    elif func == "tanh":
+        return tanh(angle_deg)
     return "Error: unknown trig function"
+
+
+# ---- Reciprocal trig functions (input in degrees) ----
+def sec(angle_deg):
+    """sec(x) = 1 / cos(x); undefined when cos(x) = 0 (90, 270 ...)."""
+    c = math.cos(to_rad(angle_deg))
+    if abs(c) < 1e-12:
+        return "Error: sec undefined (cos = 0, division by zero)"
+    return 1 / c
+
+
+def cosec(angle_deg):
+    """cosec(x) = 1 / sin(x); undefined when sin(x) = 0 (0, 180, 360 ...)."""
+    s = math.sin(to_rad(angle_deg))
+    if abs(s) < 1e-12:
+        return "Error: cosec undefined (sin = 0, division by zero)"
+    return 1 / s
+
+
+def cot(angle_deg):
+    """cot(x) = cos(x) / sin(x); undefined when sin(x) = 0 (0, 180, 360 ...)."""
+    x = to_rad(angle_deg)
+    s = math.sin(x)
+    if abs(s) < 1e-12:
+        return "Error: cot undefined (sin = 0, division by zero)"
+    return math.cos(x) / s
+
+
+# ---- Hyperbolic functions (input is a plain number, not degrees) ----
+def sinh(x):
+    """sinh(x) = (e^x - e^-x) / 2"""
+    try:
+        return (math.exp(x) - math.exp(-x)) / 2
+    except OverflowError:
+        return "Error: result too large"
+
+
+def cosh(x):
+    """cosh(x) = (e^x + e^-x) / 2"""
+    try:
+        return (math.exp(x) + math.exp(-x)) / 2
+    except OverflowError:
+        return "Error: result too large"
+
+
+def tanh(x):
+    """tanh(x) = sinh(x) / cosh(x); cosh is never 0, but we still check."""
+    if abs(x) > 20:
+        # For large |x|, tanh is +1 or -1 to full float precision,
+        # and sinh/cosh would overflow, so return the limit directly.
+        return 1.0 if x > 0 else -1.0
+    c = cosh(x)
+    if c == 0:
+        return "Error: tanh undefined (cosh = 0, division by zero)"
+    return sinh(x) / c
 
 
 # ---- Exponential and logarithm ----
@@ -354,8 +421,11 @@ def main():
             history.append(f"basic {a} {op} -> {res}")
 
         elif choice == "2":
-            fn = input("sin/cos/tan/asin/acos/atan: ").strip().lower()
-            ang = read_float("value (degrees; for inverse, a ratio): ")
+            fn = input("sin/cos/tan/asin/acos/atan/sec/cosec/cot/sinh/cosh/tanh: ").strip().lower()
+            if fn in ("sinh", "cosh", "tanh"):
+                ang = read_float("value (plain number, not degrees): ")
+            else:
+                ang = read_float("value (degrees; for inverse, a ratio): ")
             res = trig(fn, ang)
             print("Result:", res)
             history.append(f"{fn}({ang}) -> {res}")
