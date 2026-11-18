@@ -268,8 +268,17 @@ SAFE.update({"abs": abs, "pow": pow})
 
 
 def make_function(expr):
-    """Turn text like 'x**2 + sin(x)' into a lambda."""
+    """Turn text like 'x**2 + sin(x)' into a lambda.
+
+    An equation such as 'x^2 - 2 = 0' or 'x^2 = 2' is also accepted:
+    it is rewritten as (left side) - (right side), so the root is the same.
+    """
     expr = expr.replace("^", "**")
+    if "=" in expr:
+        lhs, rhs = expr.split("=", 1)
+        if not lhs.strip() or not rhs.strip():
+            raise ValueError("equation needs something on both sides of '='")
+        expr = f"({lhs}) - ({rhs})"
     return lambda x: eval(expr, {"__builtins__": {}}, {**SAFE, "x": x})
 
 
