@@ -202,6 +202,25 @@ def sin_series(x_deg, terms=10):
     return total
 
 
+def cos_series(x_deg, terms=10):
+    """cos(x) using the Taylor series: 1 - x^2/2! + x^4/4! - x^6/6! + ..."""
+    x = to_rad(x_deg)
+    total = 0
+    for n in range(terms):
+        total += ((-1) ** n) * x ** (2 * n) / factorial(2 * n)
+    return total
+
+
+def compare_cos_series(angles=(10, 20, 30), terms=10):
+    """Print cos_series vs math.cos for each angle (degrees) and the error."""
+    print(f"  {'angle':>6}  {'Taylor series':>20}  {'math.cos':>20}  {'error':>10}")
+    for ang in angles:
+        approx = cos_series(ang, terms)
+        exact = math.cos(to_rad(ang))
+        error = abs(approx - exact)
+        print(f"  {ang:>3} deg  {approx:>20.16f}  {exact:>20.16f}  {error:>10.2e}")
+
+
 def log_base(x, base=10):
     """Logarithm of x in any base via change-of-base rule."""
     if x <= 0 or base <= 0 or base == 1:
@@ -231,6 +250,19 @@ def derivative(f, x, h=1e-5):
 def second_derivative(f, x, h=1e-4):
     """Three-point formula: f''(x) ~ (f(x+h) - 2f(x) + f(x-h)) / h^2"""
     return (f(x + h) - 2 * f(x) + f(x - h)) / h ** 2
+
+
+def partial_derivative(f, x, y, var="x", h=1e-5):
+    """Partial derivative of f(x, y) by central difference.
+
+    df/dx ~ (f(x+h, y) - f(x-h, y)) / 2h   (y held constant)
+    df/dy ~ (f(x, y+h) - f(x, y-h)) / 2h   (x held constant)
+    """
+    if var == "x":
+        return (f(x + h, y) - f(x - h, y)) / (2 * h)
+    elif var == "y":
+        return (f(x, y + h) - f(x, y - h)) / (2 * h)
+    return "Error: variable must be 'x' or 'y'"
 
 
 def integrate_trapezoid(f, a, b, n=1000):
@@ -282,6 +314,28 @@ def bisection(f, a, b, tol=1e-10):
         else:
             a = c
     return (a + b) / 2
+
+
+def secant(f, x0, x1, tol=1e-10, max_iter=50):
+    """Find a root of f using the secant method.
+
+    Like Newton-Raphson, but the slope f'(x) is replaced by the slope of the
+    line through the last two points:
+        x2 = x1 - f(x1) * (x1 - x0) / (f(x1) - f(x0))
+    """
+    iteration = 0
+    while iteration < max_iter:
+        f0, f1 = f(x0), f(x1)
+        if f1 == 0:
+            return x1          # x1 is already an exact root
+        if f1 == f0:
+            return "Error: f(x0) and f(x1) are equal (division by zero)"
+        x2 = x1 - f1 * (x1 - x0) / (f1 - f0)
+        if abs(x2 - x1) < tol:
+            return x2
+        x0, x1 = x1, x2
+        iteration += 1
+    return "Error: did not converge"
 
 
 # ---- Polynomials ----
@@ -336,6 +390,62 @@ def stats(data):
     return {"mean": mean, "median": median, "variance": var, "std": math.sqrt(var)}
 
 
+# ---- 2x2 Matrices ----
+# A matrix is stored as a list of rows: [[a, b], [c, d]]
+def mat_add(A, B):
+    """Add two 2x2 matrices element by element."""
+    result = [[0, 0], [0, 0]]
+    for i in range(2):
+        for j in range(2):
+            result[i][j] = A[i][j] + B[i][j]
+    return result
+
+
+def mat_mul(A, B):
+    """Multiply two 2x2 matrices: C[i][j] = sum of A[i][k] * B[k][j]."""
+    result = [[0, 0], [0, 0]]
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                result[i][j] += A[i][k] * B[k][j]
+    return result
+
+
+def mat_det(A):
+    """Determinant of [[a, b], [c, d]] = ad - bc."""
+    return A[0][0] * A[1][1] - A[0][1] * A[1][0]
+
+
+def mat_inverse(A):
+    """Inverse of [[a, b], [c, d]] = (1/det) * [[d, -b], [-c, a]]."""
+    det = mat_det(A)
+    if det == 0:
+        return "Error: determinant is 0, matrix has no inverse"
+    return [[A[1][1] / det, -A[0][1] / det],
+            [-A[1][0] / det, A[0][0] / det]]
+
+
+def mat_string(A):
+    """Format a 2x2 matrix on two lines for printing."""
+    if isinstance(A, str):          # an error message
+        return A
+    return "\n".join("  [ " + "  ".join(f"{v:>10.4g}" for v in row) + " ]" for row in A)
+
+
+def read_matrix(name):
+    """Ask for 4 numbers (row by row) and return them as a 2x2 matrix."""
+    while True:
+        raw = input(f"matrix {name} - enter a b c d (row by row): ")
+        try:
+            nums = [float(t) for t in raw.split()]
+            if len(nums) != 4:
+                print("  Please enter exactly 4 numbers.")
+                continue
+            return [[nums[0], nums[1]], [nums[2], nums[3]]]
+        except ValueError:
+            print("  Invalid number, try again.")
+
+
 # ---------------------------------------------------------------
 # 4. FUNCTION PARSER (user types f(x) as text)
 # ---------------------------------------------------------------
@@ -358,6 +468,12 @@ def make_function(expr):
     return lambda x: eval(expr, {"__builtins__": {}}, {**SAFE, "x": x})
 
 
+def make_function_xy(expr):
+    """Turn text like 'x^2*y + sin(y)' into a two-variable lambda f(x, y)."""
+    expr = expr.replace("^", "**")
+    return lambda x, y: eval(expr, {"__builtins__": {}}, {**SAFE, "x": x, "y": y})
+
+
 # ---------------------------------------------------------------
 # 5. MENU AND MAIN LOOP
 # ---------------------------------------------------------------
@@ -370,7 +486,10 @@ MENU = """
  5. Derivative f'(x)           13. Newton-Raphson root
  6. Second derivative f''(x)   14. Bisection root
  7. Integral (Simpson)         15. History
- 8. Unit conversion             0. Exit
+ 8. Unit conversion            16. Secant method root
+                               17. Partial derivative f(x, y)
+                               18. 2x2 Matrix operations
+                                0. Exit
 =============================================
 """
 
@@ -421,14 +540,23 @@ def main():
             history.append(f"basic {a} {op} -> {res}")
 
         elif choice == "2":
-            fn = input("sin/cos/tan/asin/acos/atan/sec/cosec/cot/sinh/cosh/tanh: ").strip().lower()
-            if fn in ("sinh", "cosh", "tanh"):
-                ang = read_float("value (plain number, not degrees): ")
+            fn = input("sin/cos/tan/asin/acos/atan/sec/cosec/cot/sinh/cosh/tanh"
+                       "\n(or 'cos_series' to compare Taylor cos with math.cos): ").strip().lower()
+            if fn == "cos_series":
+                # Taylor series vs math.cos at 10, 20 and 30 degrees
+                compare_cos_series((10, 20, 30))
+                history.append("cos Taylor series vs math.cos at 10, 20, 30 deg")
             else:
-                ang = read_float("value (degrees; for inverse, a ratio): ")
-            res = trig(fn, ang)
-            print("Result:", res)
-            history.append(f"{fn}({ang}) -> {res}")
+                if fn in ("sinh", "cosh", "tanh"):
+                    ang = read_float("value (plain number, not degrees): ")
+                else:
+                    ang = read_float("value (degrees; for inverse, a ratio): ")
+                res = trig(fn, ang)
+                print("Result:", res)
+                if fn == "cos":
+                    approx = cos_series(ang)
+                    print(f"Taylor series: {approx}   (error: {abs(approx - res):.2e})")
+                history.append(f"{fn}({ang}) -> {res}")
 
         elif choice == "3":
             sub_choice = input("1) e^x  2) ln  3) log10  4) log base b: ").strip()
@@ -548,6 +676,54 @@ def main():
                 print("No history yet.")
             for i, h in enumerate(history, 1):
                 print(f"  {i}. {h}")
+
+        elif choice == "16":
+            expr = input("f(x) = ")
+            try:
+                f = make_function(expr)
+                x0 = read_float("first guess x0 = ")
+                x1 = read_float("second guess x1 = ")
+                res = secant(f, x0, x1)
+                print("Root:", res)
+                history.append(f"secant on {expr} -> {res}")
+            except Exception as e:
+                print("Could not evaluate:", e)
+
+        elif choice == "17":
+            expr = input("f(x, y) = ")
+            try:
+                f = make_function_xy(expr)
+                x = read_float("at x = ")
+                y = read_float("at y = ")
+                fx = partial_derivative(f, x, y, "x")
+                fy = partial_derivative(f, x, y, "y")
+                print(f"df/dx at ({x}, {y}) = {fx:.6f}")
+                print(f"df/dy at ({x}, {y}) = {fy:.6f}")
+                history.append(f"partial of {expr} at ({x}, {y}) -> fx={fx:.6f}, fy={fy:.6f}")
+            except Exception as e:
+                print("Could not evaluate:", e)
+
+        elif choice == "18":
+            op = input("1) A + B  2) A x B  3) determinant of A  4) inverse of A: ").strip()
+            if op in ("1", "2", "3", "4"):
+                A = read_matrix("A")
+                if op == "1":
+                    res = mat_add(A, read_matrix("B"))
+                    print("A + B =")
+                elif op == "2":
+                    res = mat_mul(A, read_matrix("B"))
+                    print("A x B =")
+                elif op == "3":
+                    res = mat_det(A)
+                    print("det(A) =", res)
+                else:
+                    res = mat_inverse(A)
+                    print("inverse(A) =")
+                if op != "3":
+                    print(mat_string(res))
+                history.append(f"matrix op {op} on A={A} -> {res}")
+            else:
+                print("Invalid choice")
 
         else:
             print("Invalid option, please try again.")
